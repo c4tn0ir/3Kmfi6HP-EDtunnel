@@ -30,8 +30,12 @@ jobs:
           set -euo pipefail
           export ANDROID_HOME=/usr/local/lib/android/sdk
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
-          test -x "$SDKMANAGER"
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -perm -u+x 2>/dev/null | sort -V | tail -1)"
+          fi
+          test -n "$SDKMANAGER" && test -x "$SDKMANAGER"
+          echo "Using sdkmanager: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
           mkdir -p "$RUNNER_TEMP/sdk-out"
