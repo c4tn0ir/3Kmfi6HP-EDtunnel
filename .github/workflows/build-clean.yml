@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 60
     env:
       SOURCE_SHA256: c49ea528b448dd0d5c9a2d0a792264978332d0c8c04291dd2710d9f3f10dba5a
-      OVERLAY_SHA256: ad029c335d0dec9a9b506c06ada9b0d7f145fad6226c9a520f1fbbd65034b266
+      OVERLAY_SHA256: 568a6a9329c14dcd15f4f82ba84ef7853c180ac972d94310678354843ba16cfb
       ANDROID_HOME: /home/runner/android-sdk
       ANDROID_SDK_ROOT: /home/runner/android-sdk
     steps:
@@ -27,22 +27,22 @@ jobs:
           cp ci/overrides/app-build.gradle.kts noirvpn/app/build.gradle.kts
           cp ci/overrides/gradle.properties noirvpn/gradle.properties
 
-      - name: Apply NoirVPN redesign
+      - name: Apply alpha04 interface and runtime overlay
         run: |
-          cat ci/redesign-overlay.b64.00 ci/redesign-overlay.b64.01 ci/redesign-overlay.b64.02 ci/redesign-overlay.b64.03 ci/redesign-overlay.b64.04 | base64 -d > /tmp/noirvpn-redesign.tgz
-          echo "$OVERLAY_SHA256  /tmp/noirvpn-redesign.tgz" | sha256sum -c -
-          tar -xzf /tmp/noirvpn-redesign.tgz -C noirvpn
-
-      - name: Upload reconstructed source
-        uses: actions/upload-artifact@v4
-        with:
-          name: noirvpn-clean-source
-          path: noirvpn/
-          if-no-files-found: error
+          cat ci/alpha04-overlay.b64.00 ci/alpha04-overlay.b64.01 ci/alpha04-overlay.b64.02 ci/alpha04-overlay.b64.03 ci/alpha04-overlay.b64.04 ci/alpha04-overlay.b64.05 ci/alpha04-overlay.b64.06 | base64 -d > /tmp/noirvpn-alpha04.tgz
+          echo "$OVERLAY_SHA256  /tmp/noirvpn-alpha04.tgz" | sha256sum -c -
+          tar -xzf /tmp/noirvpn-alpha04.tgz -C noirvpn
 
       - name: Guard source identity
         working-directory: noirvpn
         run: python3 scripts/identity_guard.py
+
+      - name: Upload reconstructed source
+        uses: actions/upload-artifact@v4
+        with:
+          name: noirvpn-alpha04-source
+          path: noirvpn/
+          if-no-files-found: error
 
       - uses: actions/setup-java@v4
         with:
@@ -56,19 +56,15 @@ jobs:
           echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  /tmp/cmdline-tools.zip" | sha256sum -c -
           unzip -q /tmp/cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
           mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       - name: Install Android SDK packages
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-          test -f "$ANDROID_HOME/platforms/android-36/android.jar"
 
       - name: Fetch official libXray v26.9.9
         run: |
-          curl -fL --retry 4 \
-            https://github.com/XTLS/libXray/releases/download/v26.9.9/libxray-android.zip \
-            -o /tmp/libxray-android.zip
+          curl -fL --retry 4 https://github.com/XTLS/libXray/releases/download/v26.9.9/libxray-android.zip -o /tmp/libxray-android.zip
           echo "4998a8b56e4a78a164b5359d5690036f83da3b575465cea57ddf29c0149c345f  /tmp/libxray-android.zip" | sha256sum -c -
           unzip -q /tmp/libxray-android.zip -d /tmp/libxray
           AAR="$(find /tmp/libxray -type f -iname '*.aar' -print -quit)"
@@ -80,23 +76,38 @@ jobs:
         with:
           gradle-version: '8.13'
 
+      - name: Unit tests
+        working-directory: noirvpn
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest
+
       - name: Build APKs
         working-directory: noirvpn
-        run: gradle --no-daemon --stacktrace :app:assembleRelease :app:assembleDebug
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:assembleRelease
 
       - name: Guard APK identity
         working-directory: noirvpn
         run: python3 scripts/identity_guard.py app/build/outputs/apk
 
+      - name: Verify package and ABI
+        run: |
+          APK=noirvpn/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" | tee /tmp/badging.txt
+          grep -q "package: name='com.catnoir.noirvpn'" /tmp/badging.txt
+          grep -q "versionCode='103'" /tmp/badging.txt
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/'
+          if unzip -l "$APK" | grep -Eq 'lib/(armeabi-v7a|x86|x86_64)/'; then
+            echo "Unexpected non-arm64 ABI"; exit 1
+          fi
+
       - name: Collect
         run: |
           mkdir -p dist
-          cp noirvpn/app/build/outputs/apk/release/app-release-unsigned.apk dist/NoirVPN-alpha03-release-unsigned.apk
-          cp noirvpn/app/build/outputs/apk/debug/app-debug.apk dist/NoirVPN-alpha03-debug.apk
+          cp noirvpn/app/build/outputs/apk/release/app-release-unsigned.apk dist/NoirVPN-alpha04-release-unsigned.apk
+          cp noirvpn/app/build/outputs/apk/debug/app-debug.apk dist/NoirVPN-alpha04-debug.apk
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: noirvpn-alpha03-apks
+          name: noirvpn-alpha04-apks
           path: dist/
           if-no-files-found: error
