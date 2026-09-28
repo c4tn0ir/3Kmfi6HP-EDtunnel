@@ -157,6 +157,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/gradle-cache-out"
           tar -C "$ROOT/gradle-home" -czf "$RUNNER_TEMP/gradle-cache-out/noir-gradle-home.tar.gz" caches
           sha256sum "$RUNNER_TEMP/gradle-cache-out/noir-gradle-home.tar.gz" > "$RUNNER_TEMP/gradle-cache-out/noir-gradle-home.tar.gz.sha256"
+          mkdir -p "$RUNNER_TEMP/gradle-cache-parts"
+          split -b 90M -d -a 2 "$RUNNER_TEMP/gradle-cache-out/noir-gradle-home.tar.gz" "$RUNNER_TEMP/gradle-cache-parts/part-"
+          cp "$RUNNER_TEMP/gradle-cache-out/noir-gradle-home.tar.gz.sha256" "$RUNNER_TEMP/gradle-cache-parts/"
 
       - name: Package JDK 17
         shell: bash
@@ -182,11 +185,74 @@ jobs:
           retention-days: 3
           compression-level: 0
 
-      - name: Upload dependency cache
+      - name: Upload dependency cache part 00
         uses: actions/upload-artifact@v4
         with:
-          name: noir-gradle-cache
-          path: ${{ runner.temp }}/gradle-cache-out/
+          name: noir-gradle-cache-part-00
+          path: ${{ runner.temp }}/gradle-cache-parts/part-00
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload dependency cache part 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: noir-gradle-cache-part-01
+          path: ${{ runner.temp }}/gradle-cache-parts/part-01
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload dependency cache part 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: noir-gradle-cache-part-02
+          path: ${{ runner.temp }}/gradle-cache-parts/part-02
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload dependency cache part 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: noir-gradle-cache-part-03
+          path: ${{ runner.temp }}/gradle-cache-parts/part-03
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload dependency cache part 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: noir-gradle-cache-part-04
+          path: ${{ runner.temp }}/gradle-cache-parts/part-04
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload dependency cache part 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: noir-gradle-cache-part-05
+          path: ${{ runner.temp }}/gradle-cache-parts/part-05
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload dependency cache part 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: noir-gradle-cache-part-06
+          path: ${{ runner.temp }}/gradle-cache-parts/part-06
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload dependency cache checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: noir-gradle-cache-sha256
+          path: ${{ runner.temp }}/gradle-cache-parts/noir-gradle-home.tar.gz.sha256
           retention-days: 3
           compression-level: 0
 
