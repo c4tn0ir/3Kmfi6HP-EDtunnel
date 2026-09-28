@@ -10,9 +10,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      NDK_VERSION: r29
-      LIBXRAY_COMMIT: 83f16029d38791274c40fa061958daf9ccd85bb7
       SOURCE_SHA256: c49ea528b448dd0d5c9a2d0a792264978332d0c8c04291dd2710d9f3f10dba5a
+      OVERLAY_SHA256: ad029c335d0dec9a9b506c06ada9b0d7f145fad6226c9a520f1fbbd65034b266
       ANDROID_HOME: /home/runner/android-sdk
       ANDROID_SDK_ROOT: /home/runner/android-sdk
     steps:
@@ -27,6 +26,12 @@ jobs:
           cp ci/overrides/build.gradle.kts noirvpn/build.gradle.kts
           cp ci/overrides/app-build.gradle.kts noirvpn/app/build.gradle.kts
           cp ci/overrides/gradle.properties noirvpn/gradle.properties
+
+      - name: Apply NoirVPN redesign
+        run: |
+          cat ci/redesign-overlay.b64.00 ci/redesign-overlay.b64.01 ci/redesign-overlay.b64.02 ci/redesign-overlay.b64.03 ci/redesign-overlay.b64.04 | base64 -d > /tmp/noirvpn-redesign.tgz
+          echo "$OVERLAY_SHA256  /tmp/noirvpn-redesign.tgz" | sha256sum -c -
+          tar -xzf /tmp/noirvpn-redesign.tgz -C noirvpn
 
       - name: Upload reconstructed source
         uses: actions/upload-artifact@v4
@@ -68,7 +73,6 @@ jobs:
           unzip -q /tmp/libxray-android.zip -d /tmp/libxray
           AAR="$(find /tmp/libxray -type f -iname '*.aar' -print -quit)"
           test -n "$AAR"
-          echo "Using libXray AAR: $AAR"
           mkdir -p "$GITHUB_WORKSPACE/noirvpn/app/libs"
           cp "$AAR" "$GITHUB_WORKSPACE/noirvpn/app/libs/libXray.aar"
 
@@ -87,12 +91,12 @@ jobs:
       - name: Collect
         run: |
           mkdir -p dist
-          cp noirvpn/app/build/outputs/apk/release/app-release-unsigned.apk dist/NoirVPN-clean-release-unsigned.apk
-          cp noirvpn/app/build/outputs/apk/debug/app-debug.apk dist/NoirVPN-clean-debug.apk
+          cp noirvpn/app/build/outputs/apk/release/app-release-unsigned.apk dist/NoirVPN-alpha03-release-unsigned.apk
+          cp noirvpn/app/build/outputs/apk/debug/app-debug.apk dist/NoirVPN-alpha03-debug.apk
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: noirvpn-clean-apks
+          name: noirvpn-alpha03-apks
           path: dist/
           if-no-files-found: error
