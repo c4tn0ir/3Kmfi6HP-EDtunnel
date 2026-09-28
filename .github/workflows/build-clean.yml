@@ -1,0 +1,97 @@
+name: Build NoirVPN Clean
+
+on:
+  push:
+    branches: [noirvpn-clean-dev]
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      NDK_VERSION: r29
+      LIBXRAY_COMMIT: 83f16029d38791274c40fa061958daf9ccd85bb7
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Expand clean source
+        run: |
+          mkdir -p noirvpn
+          tar -xzf ci/noirvpn-source.tgz -C noirvpn
+
+      - name: Guard source identity
+        working-directory: noirvpn
+        run: python3 scripts/identity_guard.py
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          check-latest: true
+
+      - name: Build clean libXray
+        run: |
+          git clone https://github.com/XTLS/libXray.git "$RUNNER_TEMP/libxray"
+          cd "$RUNNER_TEMP/libxray"
+          git checkout "$LIBXRAY_COMMIT"
+          python3 build/main.py android
+          mkdir -p "$GITHUB_WORKSPACE/noirvpn/app/libs"
+          cp libXray.aar "$GITHUB_WORKSPACE/noirvpn/app/libs/libXray.aar"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.0'
+
+      - name: Build APK
+        working-directory: noirvpn
+        run: gradle --no-daemon :app:assembleRelease :app:assembleDebug
+
+      - name: Guard built artifacts
+        working-directory: noirvpn
+        run: python3 scripts/identity_guard.py app/build/outputs/apk
+
+      - name: Collect
+        run: |
+          mkdir -p dist
+          cp noirvpn/app/build/outputs/apk/release/app-release-unsigned.apk dist/NoirVPN-clean-release-unsigned.apk
+          cp noirvpn/app/build/outputs/apk/debug/app-debug.apk dist/NoirVPN-clean-debug.apk
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: noirvpn-clean-apks
+          path: dist/
+          if-no-files-found: error
+
+  signer-tool:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fetch signing helper
+        run: |
+          curl -fL --retry 3 \
+            https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar \
+            -o uber-apk-signer-1.3.0.jar
+      - name: Upload signing helper
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-signing-helper
+          path: uber-apk-signer-1.3.0.jar
