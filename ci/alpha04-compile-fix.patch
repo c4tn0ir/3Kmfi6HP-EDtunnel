@@ -1,0 +1,37 @@
+--- a/app/src/main/java/com/catnoir/noirvpn/ui/NoirApp.kt
++++ b/app/src/main/java/com/catnoir/noirvpn/ui/NoirApp.kt
+@@ -16,7 +16,6 @@
+ import androidx.compose.foundation.layout.padding
+ import androidx.compose.foundation.layout.size
+ import androidx.compose.foundation.layout.width
+-import androidx.compose.foundation.layout.weight
+ import androidx.compose.foundation.lazy.LazyColumn
+ import androidx.compose.foundation.lazy.items
+ import androidx.compose.foundation.shape.CircleShape
+@@ -1015,7 +1014,7 @@
+                 title = selected?.let { cleanProfileName(it.name) } ?: "Сервер не выбран",
+                 subtitle = selected?.latencyMs?.let { "$it ms" } ?: "Нет результата",
+                 icon = Icons.Outlined.Speed,
+-                onClick = if (selected != null) vm::pingAll else null,
++                onClick = if (selected != null) ({ vm.pingAll() }) else null,
+                 value = if (selected != null) "Проверить" else null,
+             )
+         }
+@@ -1035,7 +1034,7 @@
+             NoirListItem("Username", value = user.username.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "—", icon = Icons.Outlined.Person, showDivider = true)
+             NoirListItem("User ID", value = user.userId.takeIf { it != 0L }?.toString() ?: "—", icon = Icons.Outlined.VpnKey)
+         }
+-        item { MembershipCard(user, plans, vm) }
++        MembershipCard(user, plans, vm)
+         NoirSection("Профиль") {
+             RoundedInput(firstName, { firstName = it }, "Имя")
+             RoundedInput(lastName, { lastName = it }, "Фамилия")
+@@ -1093,7 +1092,7 @@
+                 title = if (speed.running) "${speed.phase}…" else "Запустить тест скорости",
+                 subtitle = speedSummary(speed),
+                 icon = Icons.Outlined.Speed,
+-                onClick = if (!speed.running) vm::runSpeedTest else null,
++                onClick = if (!speed.running) ({ vm.runSpeedTest() }) else null,
+             )
+         }
+     }
