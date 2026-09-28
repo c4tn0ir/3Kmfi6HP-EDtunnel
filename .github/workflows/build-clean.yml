@@ -13,12 +13,14 @@ jobs:
       NDK_VERSION: r29
       LIBXRAY_COMMIT: 83f16029d38791274c40fa061958daf9ccd85bb7
       SOURCE_SHA256: c49ea528b448dd0d5c9a2d0a792264978332d0c8c04291dd2710d9f3f10dba5a
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
     steps:
       - uses: actions/checkout@v4
 
       - name: Reconstruct clean source
         run: |
-          cat             ci/noirvpn-source.b64.00             ci/noirvpn-source.b64.01a             ci/noirvpn-source.b64.01b             ci/noirvpn-source.b64.02             ci/noirvpn-source.b64.03             ci/noirvpn-source.b64.04             | base64 -d > /tmp/noirvpn-source.tgz
+          cat ci/noirvpn-source.b64.00 ci/noirvpn-source.b64.01a ci/noirvpn-source.b64.01b ci/noirvpn-source.b64.02 ci/noirvpn-source.b64.03 ci/noirvpn-source.b64.04 | base64 -d > /tmp/noirvpn-source.tgz
           echo "$SOURCE_SHA256  /tmp/noirvpn-source.tgz" | sha256sum -c -
           mkdir -p noirvpn
           tar -xzf /tmp/noirvpn-source.tgz -C noirvpn
@@ -27,18 +29,25 @@ jobs:
         working-directory: noirvpn
         run: python3 scripts/identity_guard.py
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
+      - name: Install Android command-line tools
+        run: |
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -fL --retry 4             https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip             -o /tmp/cmdline-tools.zip
+          echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  /tmp/cmdline-tools.zip" | sha256sum -c -
+          unzip -q /tmp/cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls -la "$ANDROID_HOME/platforms/android-36/android.jar"
-          ls -la "$ANDROID_HOME/build-tools/36.0.0"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          test -f "$ANDROID_HOME/platforms/android-36/android.jar"
 
       - uses: nttld/setup-ndk@v1
         with:
