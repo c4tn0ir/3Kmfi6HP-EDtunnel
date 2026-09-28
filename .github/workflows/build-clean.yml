@@ -28,6 +28,13 @@ jobs:
           cp ci/overrides/app-build.gradle.kts noirvpn/app/build.gradle.kts
           cp ci/overrides/gradle.properties noirvpn/gradle.properties
 
+      - name: Upload reconstructed source
+        uses: actions/upload-artifact@v4
+        with:
+          name: noirvpn-clean-source
+          path: noirvpn/
+          if-no-files-found: error
+
       - name: Guard source identity
         working-directory: noirvpn
         run: python3 scripts/identity_guard.py
@@ -40,7 +47,7 @@ jobs:
       - name: Install Android command-line tools
         run: |
           mkdir -p "$ANDROID_HOME/cmdline-tools"
-          curl -fL --retry 4             https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip             -o /tmp/cmdline-tools.zip
+          curl -fL --retry 4 https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip -o /tmp/cmdline-tools.zip
           echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  /tmp/cmdline-tools.zip" | sha256sum -c -
           unzip -q /tmp/cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
           mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
