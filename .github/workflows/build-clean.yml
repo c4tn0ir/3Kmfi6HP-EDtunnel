@@ -18,7 +18,7 @@ jobs:
 
       - name: Reconstruct clean source
         run: |
-          cat ci/noirvpn-source.b64.* | base64 -d > /tmp/noirvpn-source.tgz
+          cat             ci/noirvpn-source.b64.00             ci/noirvpn-source.b64.01a             ci/noirvpn-source.b64.01b             ci/noirvpn-source.b64.02             ci/noirvpn-source.b64.03             ci/noirvpn-source.b64.04             | base64 -d > /tmp/noirvpn-source.tgz
           echo "$SOURCE_SHA256  /tmp/noirvpn-source.tgz" | sha256sum -c -
           mkdir -p noirvpn
           tar -xzf /tmp/noirvpn-source.tgz -C noirvpn
