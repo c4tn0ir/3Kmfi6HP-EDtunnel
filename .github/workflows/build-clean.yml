@@ -24,6 +24,9 @@ jobs:
           echo "$SOURCE_SHA256  /tmp/noirvpn-source.tgz" | sha256sum -c -
           mkdir -p noirvpn
           tar -xzf /tmp/noirvpn-source.tgz -C noirvpn
+          cp ci/overrides/build.gradle.kts noirvpn/build.gradle.kts
+          cp ci/overrides/app-build.gradle.kts noirvpn/app/build.gradle.kts
+          cp ci/overrides/gradle.properties noirvpn/gradle.properties
 
       - name: Guard source identity
         working-directory: noirvpn
@@ -64,7 +67,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.7.0'
+          gradle-version: '8.13'
 
       - name: Build APKs
         working-directory: noirvpn
