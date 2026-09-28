@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 60
     env:
       SOURCE_SHA256: c49ea528b448dd0d5c9a2d0a792264978332d0c8c04291dd2710d9f3f10dba5a
+      LEGACY_OVERLAY_SHA256: ad029c335d0dec9a9b506c06ada9b0d7f145fad6226c9a520f1fbbd65034b266
       OVERLAY_SHA256: 568a6a9329c14dcd15f4f82ba84ef7853c180ac972d94310678354843ba16cfb
       ANDROID_HOME: /home/runner/android-sdk
       ANDROID_SDK_ROOT: /home/runner/android-sdk
@@ -27,11 +28,19 @@ jobs:
           cp ci/overrides/app-build.gradle.kts noirvpn/app/build.gradle.kts
           cp ci/overrides/gradle.properties noirvpn/gradle.properties
 
+      - name: Apply alpha03 functional base
+        run: |
+          cat ci/redesign-overlay.b64.00 ci/redesign-overlay.b64.01 ci/redesign-overlay.b64.02 ci/redesign-overlay.b64.03 ci/redesign-overlay.b64.04 | base64 -d > /tmp/noirvpn-alpha03.tgz
+          echo "$LEGACY_OVERLAY_SHA256  /tmp/noirvpn-alpha03.tgz" | sha256sum -c -
+          tar -xzf /tmp/noirvpn-alpha03.tgz -C noirvpn
+
       - name: Apply alpha04 interface and runtime overlay
         run: |
           cat ci/alpha04-overlay.b64.00 ci/alpha04-overlay.b64.01 ci/alpha04-overlay.b64.02 ci/alpha04-overlay.b64.03 ci/alpha04-overlay.b64.04 ci/alpha04-overlay.b64.05 ci/alpha04-overlay.b64.06 | base64 -d > /tmp/noirvpn-alpha04.tgz
           echo "$OVERLAY_SHA256  /tmp/noirvpn-alpha04.tgz" | sha256sum -c -
           tar -xzf /tmp/noirvpn-alpha04.tgz -C noirvpn
+          cd noirvpn
+          patch -p1 < ../ci/alpha04-compile-fix.patch
 
       - name: Guard source identity
         working-directory: noirvpn
